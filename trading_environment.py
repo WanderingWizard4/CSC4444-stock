@@ -64,7 +64,7 @@ class Portfolio:
 			if sell_qty >= lot_qty:
 				self.stock_holdings[ticker].pop(0)
 			else:
-				self.holdings[ticker][0] = (buy_dt, lot_qty - sell_qty, buy_price)
+				self.stock_holdings[ticker][0] = (buy_dt, lot_qty - sell_qty, buy_price)
 
 			remaining -= sell_qty
 
