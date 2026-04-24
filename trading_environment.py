@@ -5,6 +5,10 @@ from collections import defaultdict
 import datetime
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
 
 @dataclass
 class Trade:
@@ -101,6 +105,109 @@ class Portfolio:
 		if ticker not in self.stock_holdings:
 			return 0.0
 		return sum(qty for _, qty, _ in self. stock_holdings[ticker])
-	
+		
+	def save_trade_history(self, filepath: str):
+		'''Save complete trade history to CSV'''
+		if not self.trade_history:
+			print(f"No trades to save for {filepath}")
+			return
 
-			
+		records = []
+		for trade in self.trade_history:
+			records.append({
+				'datetime': trade.datetime,
+				'ticker': trade.ticker,
+				'action': trade.buy_sell,
+				'quantity': trade.quantity,
+				'price': trade.price,
+				'trade_value': round(trade.quantity * trade.price, 2),
+			})
+		trades_df = pd.DataFrame(records)
+		trades_df.to_csv(filepath, index=False)
+		print(f"Trade history saved: {os.path.basename(filepath)} ({len(trades_df)} trades)")
+
+	# Data collection for report
+	def record_equity(self, dt, current_value: float):
+		'''Record portfolio value at each timestep'''
+		if not hasattr(self, 'equity_curve'):
+			self.equity_curve = []
+		self.equity_curve.append({'datetime': dt, 'portfolio_value': current_value})
+
+	def get_equity_curve(self) -> pd.DataFrame:
+		'''Return equity curve as DataFrame'''
+		if not hasattr(self, 'equity_curve'):
+			return pd.DataFrame(columns=['datetime', 'portfolio_value'])
+		return pd.DataFrame(self.equity_curve)
+
+	def save_final_portfolio(self, filepath: str, current_prices: Dict[str, float]):
+		'''Save final holdings and summary'''
+		holdings = []
+		for ticker, lots in self.stock_holdings.items():
+			total_shares = sum(qty for _, qty, _ in lots)
+			if total_shares > 0:
+				current_price = current_prices.get(ticker, 0.0)
+				if current_price == 0.0:
+					print(f"   Warning: No price found for {ticker} in final portfolio save.")
+				total_cost = sum(qty * buy_price for _, qty, buy_price in lots)
+				market_value = total_shares * current_price
+				
+				holdings.append({
+					'ticker': ticker, 
+					'shares': round(total_shares, 6),
+					'avg_cost': round(total_cost / total_shares, 4),
+					'current_price': round(current_price, 4),
+					'market_value': round(market_value, 2),
+					'unrealized_pnl': round(market_value - total_cost, 2)
+				})
+
+		holdings_df = pd.DataFrame(holdings)
+		summary = {
+			'cash': round(self.cash, 2),
+			'total_market_value': round(sum(h['market_value'] for h in holdings) if holdings else 0,2),
+			'total_value': round(self.get_current_value(current_prices), 2),
+			'realized_pnl': round(self.profit_loss, 2),
+			'num_trades': len(self.trade_history)
+		}
+
+		base = filepath.replace('.csv', '')
+		if not holdings_df.empty:
+			holdings_df.to_csv(f"{base}_holdings.csv", index=False)
+		pd.DataFrame([summary]).to_csv(f"{base}_summary.csv", index=False)
+
+		print(f"Final portfolio summary and Holdings saved")
+
+	def save_equity_curve(self, filepath: str):
+		'''Save equity curve to CSV and plot'''
+		df = self.get_equity_curve()
+		if df.empty:
+			print("No equity data to save")
+			return
+
+		df.to_csv(filepath, index=False)
+
+		#make plot
+		plt.figure(figsize=(12,7))
+		sns.set_style("darkgrid")
+
+		plt.plot(df['datetime'], df['portfolio_value'], linewidth=2.5, color= 'blue')
+		plt.title('Portfolio Equity Curve', fontsize = 16, fontweight='bold')
+		plt.xlabel('Date')
+		plt.ylabel('Portfolio Value ($)')
+		plt.xticks(rotation=45)
+
+
+		#Annotate start and end
+		start_val = df['portfolio_value'].iloc[0]
+		end_val = df['portfolio_value'].iloc[-1]
+		plt.annotate(f'Start: ${start_val:,.0f}',
+					 xy=(df['datetime'].iloc[-1], end_val),
+					 xytext=(10, -15), textcoords='offset points',
+					 arroowprops=dict(arrowstyle='->', color='red'))
+		plt.tight_layout()
+		plot_path = filepath.replace('.csv', '.png')
+		plt.savefig(plot_path, dpi=200, bbox_inches='tight')
+		plt.close()
+
+		print(f"Equity curve saved: {os.path.basename(filepath)} + plot")
+				   
+	
