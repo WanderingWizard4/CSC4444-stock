@@ -37,7 +37,7 @@ def main():
     control_portfolio = Portfolio(initial_cash=10000.00)
     
     # Initialize the Brain (9 features)
-    model = ChallengerAgent(input_dim=9, hidden_dim=128, num_stocks=30)
+    model = ChallengerAgent(input_dim=9, hidden_dim=128, num_stocks=len(TICKERS))
     
     # 3. DATA PREP LOOP (The Pipeline)
     master_data = {}
@@ -59,12 +59,21 @@ def main():
     # 4. THE SIMULATION / BACKTEST
     print(f"\n--- Step 2: Starting Agent Showdown ---")
     
+    # Check if data actually loaded before continuing
+    if not master_data or 'AAPL' not in master_data:
+        print("Error: No data loaded. Check your data path and tickers.")
+        return
+
     # We use the index of the first ticker as our 'clock'
     timeline = master_data['AAPL'].index
     
+    # INITIALIZE variables before the loop to fix VS Code "undefined" warnings
+    current_prices = {t: 0.0 for t in TICKERS}
+    dt = timeline[0]
+
     for dt in timeline:
         # A. Update current prices for all tickers
-        current_prices = {t: master_data[t].loc[dt, 'close'] for t in master_data}
+        current_prices = {t: master_data[t].loc[dt, 'close'] for t in master_data if dt in master_data[t].index}
         
         # B. Check for 'Payday' (Every Friday)
         if dt.weekday() == 4 and dt.hour == 15 and dt.minute == 55:
@@ -73,9 +82,8 @@ def main():
             control_portfolio.payday(100)
 
         # C. CHALLENGER AGENT DECISION
-        # (Simplified: In a real train loop, you'd use a 60-min window here)
-        # For this runner, we're just checking the 'live' bridge connection
-        features = torch.randn(1, 60, 9) # Placeholder for the sequence
+        # features: Placeholder for the 60-min window sequence (Batch, Window, Features)
+        features = torch.randn(1, 60, 9) 
         challenger_weights = model(features)
         bridge.execute_allocation(challenger_portfolio, challenger_weights, current_prices, dt)
         
@@ -91,7 +99,12 @@ def main():
     print(f"FINAL RESULTS ({END_DATE})")
     print(f"Challenger Portfolio: ${final_c:,.2f}")
     print(f"Secondary Control:    ${final_s:,.2f}")
-    print(f"Performance Delta:    {((final_c/final_s)-1)*100:.2f}%")
+    
+    # Handle division by zero just in case
+    if final_s > 0:
+        delta = ((final_c / final_s) - 1) * 100
+        print(f"Performance Delta:    {delta:.2f}%")
+    
     print("="*40)
 
 if __name__ == "__main__":
