@@ -65,7 +65,7 @@ class SequenceGenerator:
 			if missing:
 				print(f"   Warning: {ticker} missing features: {missing[:5]}...")
 				#Use available features for the ticker
-				available_features = [col for col in self.features_cols if col in df.columns]
+				available_features = [col for col in self.feature_cols if col in df.columns]
 				if not available_features:
 					continue
 				feature_data = df[available_features].values
