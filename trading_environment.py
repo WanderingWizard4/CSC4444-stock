@@ -202,7 +202,7 @@ class Portfolio:
 		plt.annotate(f'Start: ${start_val:,.0f}',
 					 xy=(df['datetime'].iloc[-1], end_val),
 					 xytext=(10, -15), textcoords='offset points',
-					 arroowprops=dict(arrowstyle='->', color='red'))
+					 arrowprops=dict(arrowstyle='->', color='red'))
 		plt.tight_layout()
 		plot_path = filepath.replace('.csv', '.png')
 		plt.savefig(plot_path, dpi=200, bbox_inches='tight')

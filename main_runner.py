@@ -1,8 +1,11 @@
+from xml.parsers.expat import features, model
+
 import pandas as pd
 import torch
 import os
 import numpy as np
 from datetime import datetime
+from pathlib import Path
 from dotenv import load_dotenv
 from stock_data_loader import StockDataLoader
 from feature_engineering import MultiTimeFrameFeatures
@@ -168,6 +171,15 @@ def main():
 	#create model with correct input dimension
 	model = ChallengerAgent(input_dim=input_dim, hidden_dim=128, num_stocks=len(active_tickers))
 	print(f"Model initialized with {input_dim} features (multi-ticker)")
+
+	# Assuming your model is named 'model'
+	# This looks at the very last layer of the network
+	last_layer = list(model.modules())[-1]
+
+	if hasattr(last_layer, 'out_features'):
+		print(f"Model is built to output weights for {last_layer.out_features} tickers.")
+	elif hasattr(last_layer, 'out_channels'):
+		print(f"Model is built to output weights for {last_layer.out_channels} tickers.")
 	
 	bridge = AgentBridge(tickers=active_tickers)
 	
@@ -181,12 +193,26 @@ def main():
 	else:
 		print(f"\n--- Step 2: Starting Agent Showdown ---")
 		print("Loading trained brain from challenger_model.pth")
-		model.load_state_dict(torch.load("challenger_model.pth"))
-		model.eval()  # Set to eval mode for backtesting
+		# Define the absolute path based on the script location, not the CWD
+		base_dir = Path(__file__).parent.absolute()
+		model_path = base_dir / "challenger_model.pth"
+
+		print(f"Loading weights from: {model_path}")
+
+		# Explicitly load to CPU first to avoid device mismatches (common after training)
+		state_dict = torch.load(model_path, map_location=torch.device('cpu'), weights_only=True)
+		model.load_state_dict(state_dict)
+		model.eval() # CRITICAL: Sets the model to evaluation mode
 		challenger_portfolio = Portfolio(initial_cash=10000.00)
 		control_portfolio = Portfolio(initial_cash=10000.00)
 		
 		for i, dt in enumerate(timeline):
+
+			# Skip pre-market and after-hours (Only trade 9:30 AM to 4:00 PM Eastern)
+			# dt is your current timestamp
+			if (dt.hour < 9 or (dt.hour == 9 and dt.minute < 30)) or (dt.hour >= 16):
+				continue
+
 			#Update current prices for all tickers
 			current_prices = {t: master_data[t].loc[dt, 'close'] for t in active_tickers}
 	        
@@ -197,7 +223,7 @@ def main():
 				control_portfolio.payday(1000)
 	
 			#CHALLENGER AGENT DECISION
-			if i% REBALANCE_EVERY ==0:
+			if i% REBALANCE_EVERY ==0 and i >= WINDOW_SIZE: #Only start making decisions after we have enough data for one window, and only at rebalance intervals
 				# features: Placeholder for the 60-min window sequence (Batch, Window, Features)
 				features = get_current_sequence(master_data, i, seq_gen, window_size=60)
 				features = normalize_features(features)
@@ -205,6 +231,16 @@ def main():
 			else:
 				challenger_weights = None
 			
+			if challenger_weights is None:
+                # We still need to record equity so the chart doesn't have gaps
+				val_c = challenger_portfolio.get_current_value(current_prices)
+				val_s = control_portfolio.get_current_value(current_prices)
+				challenger_portfolio.record_equity(dt, val_c)
+				control_portfolio.record_equity(dt, val_s)
+                
+                # CRITICAL: Jump to the next 'dt' in the timeline
+				continue
+
 			bridge.execute_allocation(challenger_portfolio, challenger_weights, current_prices, dt)
 			control_weights = bridge.get_control_weights()
 			bridge.execute_allocation(control_portfolio, control_weights, current_prices, dt)
