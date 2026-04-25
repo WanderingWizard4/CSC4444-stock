@@ -1,15 +1,14 @@
 from stock_data_loader import StockDataLoader
 import pandas as pd
-from datetime import datetime
+import os
 from dotenv import load_dotenv
-
+from datetime import datetime
 
 load_dotenv()
+
 def main():
-	SDL = StockDataLoader(base_path="../OHLC 1 minute data/extracted_files")
-	# Updated for Jordan's computer file structure
-	# DATA_PATH = r"D:\OHLC 1992-2025-2 tar files"
-	# SDL = StockDataLoader(base_path=DATA_PATH)
+	data_path = os.getenv('DATA_PATH', '../OHLC 1 minute data/extracted_files')
+	SDL = StockDataLoader(base_path=data_path)
 
 	aapl = SDL.load1min("aapl", "2024-01-01", "2024-01-31")
 	print(aapl.head())

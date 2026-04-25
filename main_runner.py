@@ -66,7 +66,7 @@ def get_current_sequence(master_data: dict, timeline_idx: int, seq_gen: Sequence
 # --- CONFIGURATION SWITCH ---
 # Set this to True to train the brain on 2024 data
 # Set this to False to test the brain on 2025 data
-TRAINING_MODE = True 
+TRAINING_MODE = False
 
 def align_all_dataframes(master_data: dict, timeline):
 	'''Make sure every ticker has the same index as the main timeline'''
@@ -88,17 +88,17 @@ def main():
 		'CSCO', 'PG', 'HD', 'KO', 'UNH', 'MRK', 'GS', 'AXP', 'MCD', 'IBM', 
 		'VZ', 'AMGN', 'DIS', 'BA', 'CRM', 'HON', 'SHW', 'MMM', 'NKE', 'TRV', 'SPY'
 	]
-	DATA_PATH = "../OHLC 1 minute data/extracted_files"
-	# DATA_PATH = r"D:\OHLC 1992-2025-2 tar files"
-	
-	# --- DATE LOGIC BASED ON MODE ---
+
+	DATA_PATH = os.getenv("DATA_PATH", "../OHLC 1 minute data/extracted_files")
+    
+    # --- DATE LOGIC BASED ON MODE ---
 	if TRAINING_MODE:
 		START_DATE = "2024-01-01"
 		END_DATE = "2024-12-31"
 		print(f"MODE: TRAINING (Studying {START_DATE} to {END_DATE})")
 	else:
 		START_DATE = "2025-01-01"
-		END_DATE = "2025-12-31"
+		END_DATE = "2025-03-31"
 		print(f"MODE: BACKTEST (Testing {START_DATE} to {END_DATE})")
 		
 	# 2. INITIALIZE ENGINE COMPONENTS
@@ -140,23 +140,39 @@ def main():
 		print("Error: No data loaded. womp womp...")
 		return
 
+    #Filtering out any tickers that failed to load or label
+	trained_on = [
+        'NVDA', 'AAPL', 'MSFT', 'AMZN', 'WMT', 'JPM', 'V', 'JNJ', 'CAT', 'CVX', 
+        'CSCO', 'PG', 'HD','KO', 'UNH', 'MRK', 'GS', 'AXP', 'MCD', 'IBM', 
+        'VZ', 'AMGN', 'DIS', 'BA', 'CRM', 'HON', 'SHW', 'MMM', 'NKE', 'TRV', 'SPY'
+    ]
+	
+
+    # Use only the tickers that successfully loaded
+	loaded_tickers = list(master_data.keys())
+	active_tickers = [t for t in trained_on if t in loaded_tickers]
+	for t in list(master_data.keys()):
+		if t not in active_tickers:
+			del master_data[t]
+
+
+	print(f"Aligning data for {len(active_tickers)} active tickers...")
+    
 	# We use the index of the first ticker as our 'clock'
-	print("Aligning data and preparing model...")
 	timeline = list(master_data.values())[0].index
 	master_data = align_all_dataframes(master_data, timeline)
 
 	seq_gen = SequenceGenerator(window_size=WINDOW_SIZE)
-	input_dim = seq_gen.get_feature_count() * len(TICKERS)
+	input_dim = seq_gen.get_feature_count() * len(active_tickers)
 
 	#create model with correct input dimension
-	model = ChallengerAgent(input_dim=input_dim, hidden_dim=128, num_stocks=len(TICKERS))
+	model = ChallengerAgent(input_dim=input_dim, hidden_dim=128, num_stocks=len(active_tickers))
 	print(f"Model initialized with {input_dim} features (multi-ticker)")
 	
-	bridge = AgentBridge(tickers=TICKERS)
+	bridge = AgentBridge(tickers=active_tickers)
 	
-    
 	# INITIALIZE variables before the loop to fix VS Code "undefined" warnings
-	current_prices = {t: 0.0 for t in TICKERS}
+	current_prices = {t: 0.0 for t in active_tickers}
 
 	if TRAINING_MODE:
 		print(f"\n---Starting Training Phase---")
@@ -164,12 +180,15 @@ def main():
 		train_agent(master_data)
 	else:
 		print(f"\n--- Step 2: Starting Agent Showdown ---")
+		print("Loading trained brain from challenger_model.pth")
+		model.load_state_dict(torch.load("challenger_model.pth"))
+		model.eval()  # Set to eval mode for backtesting
 		challenger_portfolio = Portfolio(initial_cash=10000.00)
 		control_portfolio = Portfolio(initial_cash=10000.00)
 		
 		for i, dt in enumerate(timeline):
 			#Update current prices for all tickers
-			current_prices = {t: master_data[t].loc[dt, 'close'] for t in TICKERS}
+			current_prices = {t: master_data[t].loc[dt, 'close'] for t in active_tickers}
 	        
 			#Check for 'Payday' (Every Friday)
 			if dt.weekday() == 4 and dt.hour == 15 and dt.minute == 55:

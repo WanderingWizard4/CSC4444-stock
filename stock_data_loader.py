@@ -2,23 +2,30 @@ import pandas as pd
 from pathlib import Path
 from typing import Union, List, Dict, Optional
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class StockDataLoader:
-	def __init__(self, base_path: str = "OHLC 1 minute data/extracted_files"):
+	def __init__(self, base_path: str | None = None):
+		if base_path is None:
+			base_path = os.getenv('DATA_PATH', '../OHLC 1 minute data/extracted_files')
+		
 		self.base_path = Path(base_path)
-	# Jordan's path
-	# def __init__(self, base_path: str):
-	#	self.base_path = Path(base_path)
+
 		if not self.base_path.exists():
-			raise FileNotFoundError(f"Base path not found: {self.base_path}")
+			raise FileNotFoundError(f"Base path {self.base_path} does not exist. Please check your DATA_PATH in .env or provide a valid path.")
+
 		print(f"StockDataLoader initialized with base path: {self.base_path}")
 
-	def _get_file_path(self, year: int, month: int, ticker: str) -> Path:
-		month_str = f"{month:02d}"
-		return self.base_path / str(year) / f"{year}-{month_str}" / f"{ticker.upper()}.csv"
+	# For regular file structure:
+	# def _get_file_path(self, year: int, month: int, ticker: str) -> Path:
+	#	month_str = f"{month:02d}"
+	#	return self.base_path / str(year) / f"{year}-{month_str}" / f"{ticker.upper()}.csv"
 
 	# For Jordan's path structure:
-	# def _get_file_path(self, year: int, month: int, ticker: str) -> Path:
+	def _get_file_path(self, year: int, month: int, ticker: str) -> Path:
 		month_str = f"{month:02d}"
 		folder_name = f"us_ohlc1m_{year}-{month_str}"
 		return self.base_path / folder_name / f"{year}-{month_str}" / f"{ticker.upper()}.csv"

@@ -63,8 +63,13 @@ def train_agent(master_dfs):
         portfolio = Portfolio(initial_cash=10000.00)
         model.train() 
         
-        # Start the loop
-        for i in range(num_samples):
+        # SAFETY FIX: The loop must not exceed the length of the actual price/index arrays.
+        # We use the first ticker's length as our physical boundary.
+        max_physical_steps = len(master_dfs[TICKERS[0]])
+        loop_limit = max_physical_steps - WINDOW_SIZE
+        
+        # Start the loop using the safer limit
+        for i in range(loop_limit):
             # Define current indices relative to the full data block
             current_idx = i + WINDOW_SIZE
             
@@ -81,6 +86,7 @@ def train_agent(master_dfs):
             action_weights = model(state) 
             
             # THE AGENT EXECUTES THE CHOICE
+            # This is where the crash happened—now safe due to loop_limit
             current_dt = master_dfs[TICKERS[0]].index[current_idx]
             
             for t_idx, ticker in enumerate(TICKERS):
@@ -92,7 +98,7 @@ def train_agent(master_dfs):
             
             # 4. CALCULATE LOSS
             target_label = torch.zeros((1, len(TICKERS)))
-            target_label[0, 0] = labels[i] # Target the first ticker (or modify for multi-label)
+            target_label[0, 0] = labels[i] # Target the first ticker
             
             loss = F.mse_loss(action_weights, target_label) 
             
@@ -103,7 +109,8 @@ def train_agent(master_dfs):
             
             if i % 1000 == 0:
                 val = portfolio.get_current_value(current_prices)
-                print(f"  Step {i}/{num_samples} | Loss {loss.item():.6f} | Portfolio: ${val:.2f}")
+                # Updated print to show progress against the real limit
+                print(f"   Step {i}/{loop_limit} | Loss {loss.item():.6f} | Portfolio: ${val:.2f}")
         
         final_val = portfolio.get_current_value(current_prices)
         print(f"Epoch {epoch+1} complete. Final Value: ${final_val:.2f}")
