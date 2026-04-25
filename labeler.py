@@ -28,7 +28,7 @@ class TripleBarrierLabeler:
         
 		labels = []
 		prices = df['close'].values
-		vol_values = vol.reindex(df.index).fillna(method='bfill').values
+		vol_values = vol.reindex(df.index).bfill().values
         
 		# 2. Iterate and look ahead (the 'Barriers')
 		# Note: Vectorize for speed @ production, but this is clearer for testing

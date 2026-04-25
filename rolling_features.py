@@ -78,7 +78,8 @@ class RollingFeatures:
 		high_low = df['high'] - df['low']
 		high_close = np.abs(df['high'] - df['close'].shift())
 		low_close = np.abs(df['low'] - df['close'].shift())
-		tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+		tr_components = [high_low, high_close, low_close]
+		tr = pd.concat(tr_components, axis=1).max(axis=1)
 		df['atr'] = tr.rolling(window).mean()
 		return df
 
@@ -87,7 +88,7 @@ class RollingFeatures:
 		df['cum_vol'] = df['volume'].cumsum()
 		df['cum_price_vol'] = (df['close'] * df['volume']).cumsum()
 		df['vwap'] = df['cum_price_vol'] / df['cum_vol']
-		return df.drop(columns=['cum_vol', 'cum_price_col'], errors='ignore')
+		return df.drop(columns=['cum_vol', 'cum_price_vol'], errors='ignore')
 
 	def process(self, multi_tf_data: dict[str, pd.DataFrame]) -> dict[str,pd.DataFrame]:
 		'''Apply rolling features to all timeframes'''

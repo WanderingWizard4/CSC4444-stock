@@ -8,110 +8,111 @@ from trading_environment import Portfolio
 from sequence_generator import SequenceGenerator
 from agent_bridge import AgentBridge
 
+def normalize_features(tensor: torch.Tensor) -> torch.Tensor:
+    """Z-score normalization to help the model converge."""
+    mean = tensor.mean(dim=(0, 1), keepdim=True)
+    std = tensor.std(dim=(0, 1), keepdim=True) + 1e-8
+    return (tensor - mean) / std
+
 def train_agent(master_dfs):
-	"""
-	master_dfs: The dictionary of dataframes from your pipeline
-	"""
-	# 1. INITIALIZE COMPONENTS
-	TICKERS = list(master_dfs.keys())
-	
-	seq_gen = SequenceGenerator(window_size=60)
-	WINDOW_SIZE = 60
-	input_dim = seq_gen.get_feature_count() * len(TICKERS)
-	
-	model = ChallengerAgent(input_dim=input_dim, hidden_dim=128, num_stocks=len(TICKERS))
-	optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-	bridge = AgentBridge(tickers=TICKERS)
-	
-	# 2. PREPARE DATA (The "Textbooks")
-	print("Creating training sequences across all tickers...")
-	try:
-		_, labels, _ = seq_gen.create_sequences(master_dfs)
-	except Exception as e:
-		print(f"Error creating sequences: {e}")
-		#fallback: use first ticker only
-		_, labels, _ = seq.gen.create_sequences({TICKERS[0]: master_dfs[TICKERS[0]]})
-		
-	print(f"Training on {len(labels):,} samples")
-	
-	# 3. THE TRAINING LOOP
-	num_epochs = 10
-	
-	for epoch in range(num_epochs):
-		print(f"\n--- Starting Epoch {epoch+1}/{num_epochs} ---")
-		portfolio = Portfolio(initial_cash=10000.00)
-		model.train() 
-		
-		for i in range(len(labels)):
-			try:
-				features_list = []
-				current_idx = i + WINDOW_SIZE + 1
-				
-				for ticker in TICKERS:
-					df = master_dfs[ticker]
-					start_idx = max(0, current_idx - WINDOW_SIZE + 1)
-					window_df = df.iloc[start_idx:current_idx][seq_gen.feature_cols].copy()
+    """
+    master_dfs: The dictionary of dataframes from your pipeline
+    """
+    # 1. INITIALIZE COMPONENTS
+    TICKERS = list(master_dfs.keys())
+    seq_gen = SequenceGenerator(window_size=60)
+    WINDOW_SIZE = 60
+    input_dim = seq_gen.get_feature_count() * len(TICKERS)
+    
+    model = ChallengerAgent(input_dim=input_dim, hidden_dim=128, num_stocks=len(TICKERS))
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    bridge = AgentBridge(tickers=TICKERS)
+    
+    # 2. PRE-PROCESS DATA (The "Fast Lane" Strategy)
+    print("Converting DataFrames to high-speed NumPy tensors...")
+    feature_data = []
+    price_data = []
+    
+    for ticker in TICKERS:
+        df = master_dfs[ticker]
+        feature_data.append(df[seq_gen.feature_cols].values)
+        price_data.append(df['close'].values)
+    
+    # [Num_Tickers, Timesteps, Num_Features]
+    full_features = np.stack(feature_data, axis=0) 
+    # [Num_Tickers, Timesteps]
+    full_prices = np.stack(price_data, axis=0)
+    
+    # Labels (The "Answers")
+    print("Creating training sequences and labels...")
+    try:
+        _, labels, _ = seq_gen.create_sequences(master_dfs)
+    except Exception as e:
+        print(f"Error creating sequences: {e}")
+        _, labels, _ = seq_gen.create_sequences({TICKERS[0]: master_dfs[TICKERS[0]]})
+    
+    num_samples = len(labels)
+    print(f"Training on {num_samples:,} samples")
+    
+    # 3. THE TRAINING LOOP
+    num_epochs = 1
+    current_prices = {}
+    
+    for epoch in range(num_epochs):
+        print(f"\n--- Starting Epoch {epoch+1}/{num_epochs} ---")
+        portfolio = Portfolio(initial_cash=10000.00)
+        model.train() 
+        
+        # Start the loop
+        for i in range(num_samples):
+            # Define current indices relative to the full data block
+            current_idx = i + WINDOW_SIZE
+            
+            # FAST NUMPY SLICING (Instead of Pandas .iloc)
+            # Shape: [Num_Tickers, Window, Features]
+            state_np = full_features[:, i:current_idx, :]
+            
+            # Convert to Tensor and Normalize
+            # Reshape to [1, Window, Total_Features]
+            state = torch.FloatTensor(state_np).permute(1, 0, 2).reshape(1, WINDOW_SIZE, -1)
+            state = normalize_features(state)
+            
+            # THE BRAIN MAKES A CHOICE
+            action_weights = model(state) 
+            
+            # THE AGENT EXECUTES THE CHOICE
+            current_dt = master_dfs[TICKERS[0]].index[current_idx]
+            
+            for t_idx, ticker in enumerate(TICKERS):
+                price = full_prices[t_idx, current_idx]
+                current_prices[ticker] = float(price) if not np.isnan(price) else 0.0
 
-					if len(window_df) < WINDOW_SIZE:
-						pad = pd.DataFrame(0, index=range(WINDOW_SIZE - len(window_df)), columns=seq_gen.feature_cols)
-						window_df = pd.concat([pad, window_df], ignore_index=True)
-						
-					features_list.append(window_df.values)
-
-				stacked = np.stack(features_list,axis = 0)  #[num_tickers, window, features]
-				# Convert sequence to PyTorch tensor [Batch, Window, Features]
-				state = torch.FloatTensor(stacked).permute(1,0,2).reshape(1, WINDOW_SIZE, -1)
-		
-			except (IndexError, KeyError):
-				continue
-			
-			# THE BRAIN MAKES A CHOICE
-			action_weights = model(state) 
-			
-			# THE AGENT EXECUTES THE CHOICE
-			try:
-				ref_df = list(master_dfs.values())[0]
-				current_dt = ref_df.index[min(current_idx, len(ref_df)-1)]
-				
-				current_prices = {}
-				for t in TICKERS:
-					df_t = master_dfs[t]
-					if current_dt in master_df_t.index:
-						price = df_t.loc[current_dt, 'close']
-						if not pd.isna(price):
-							current_prices[t] = float(price)
-					else:
-						current_prices[t] = float(df_t['close'].iloc[-1])
-			except Exception:
-				continue
-			
-			# Execute trades based on the model's weight output
-			bridge.execute_allocation(portfolio, action_weights, current_prices, current_dt)
-			
-			# 4. CALCULATE THE "GRADE" (Loss/Reward)
-			# Compare weights to the Triple Barrier Label
-			target_label = torch.zeros((1, len(TICKERS)))
-			if i < len(labels):
-				target_label[0, 0] = labels[i] 
-				
-			loss = F.mse_loss(action_weights, target_label) 
-			
-			# 5. BACKPROPAGATION
-			optimizer.zero_grad()
-			loss.backward()
-			optimizer.step()
-			
-			if i % 500 == 0:
-				print(f"  Step {i}: Loss {loss.item():.6f} | Portfolio: ${portfolio.get_current_value(current_prices):.2f}")
-		
-		print(f"Epoch {epoch+1} complete. Final Value: ${portfolio.get_current_value(current_prices):.2f}")
-		
-	# --- THE BRAIN SAVE ---
-	# Save the weights so main_runner.py can load them later
-	torch.save(model.state_dict(), "challenger_model.pth")
-	print("\n" + "="*50)
-	print("SUCCESS: Brain saved to challenger_model.pth!")
-	print("="*50)
-	
+            # Execute trades
+            bridge.execute_allocation(portfolio, action_weights, current_prices, current_dt)
+            
+            # 4. CALCULATE LOSS
+            target_label = torch.zeros((1, len(TICKERS)))
+            target_label[0, 0] = labels[i] # Target the first ticker (or modify for multi-label)
+            
+            loss = F.mse_loss(action_weights, target_label) 
+            
+            # 5. BACKPROPAGATION
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            
+            if i % 1000 == 0:
+                val = portfolio.get_current_value(current_prices)
+                print(f"  Step {i}/{num_samples} | Loss {loss.item():.6f} | Portfolio: ${val:.2f}")
+        
+        final_val = portfolio.get_current_value(current_prices)
+        print(f"Epoch {epoch+1} complete. Final Value: ${final_val:.2f}")
+        
+    # --- THE BRAIN SAVE ---
+    torch.save(model.state_dict(), "challenger_model.pth")
+    print("\n" + "="*50)
+    print("SUCCESS: Brain saved to challenger_model.pth!")
+    print("="*50)
+    
 if __name__ == "__main__":
     print("This script is now a module. Please run main_runner.py with TRAINING_MODE = True.")

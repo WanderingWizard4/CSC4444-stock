@@ -6,6 +6,9 @@ from datetime import datetime
 class StockDataLoader:
 	def __init__(self, base_path: str = "OHLC 1 minute data/extracted_files"):
 		self.base_path = Path(base_path)
+	# Jordan's path
+	# def __init__(self, base_path: str):
+	#	self.base_path = Path(base_path)
 		if not self.base_path.exists():
 			raise FileNotFoundError(f"Base path not found: {self.base_path}")
 		print(f"StockDataLoader initialized with base path: {self.base_path}")
@@ -14,13 +17,22 @@ class StockDataLoader:
 		month_str = f"{month:02d}"
 		return self.base_path / str(year) / f"{year}-{month_str}" / f"{ticker.upper()}.csv"
 
+	# For Jordan's path structure:
+	# def _get_file_path(self, year: int, month: int, ticker: str) -> Path:
+		month_str = f"{month:02d}"
+		folder_name = f"us_ohlc1m_{year}-{month_str}"
+		return self.base_path / folder_name / f"{year}-{month_str}" / f"{ticker.upper()}.csv"
+	
 	def load1min(self, 
 				ticker: str, 
-				start: str = "1992-01-01", 
-				end: str = "2026-3-31",
+				start: str | None = "1992-01-01", 
+				end: str | None = "2026-3-31",
 				tz: str = "US/Eastern") -> pd.DataFrame:
 
 		"""Load 1-minute OHLCV data for a single ticker."""
+
+		start = start if start is not None else "1992-01-01"
+		end = end if end is not None else "2026-03-31"
 		start_dt = pd.to_datetime(start).tz_localize(tz)
 		end_dt = pd.to_datetime(end).tz_localize(tz)
         
@@ -67,15 +79,15 @@ class StockDataLoader:
 
 	def load(self, 
 			tickers: Union[str, List[str]], 
-			start: str = "1992-01-01", 
-			end: str = "2026-03-31") -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
+			start: str | None = "1992-01-01", 
+			end: str | None = "2026-03-31") -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
 		"""Load one or multiple tickers. Returns dict if multiple."""
 		if isinstance(tickers, str):
-			return self.load_one(tickers, start, end)
+			return self.load1min(tickers, start, end)
         
 		results = {}
 		for t in tickers:
-			df = self.load_one(t, start, end)
+			df = self.load1min(t, start, end)
 			if not df.empty:
 				results[t.upper()] = df
 			else:

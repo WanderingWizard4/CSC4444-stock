@@ -37,7 +37,7 @@ class SequenceGenerator:
 		]
 
 	def create_sequences(self, 
-						 master_data: Dict[str, pd.DataFrame]) -> Tuple[np.ndarray, np.array, List[str]]:
+						 master_data: Dict[str, pd.DataFrame]) -> Tuple[np.ndarray, np.ndarray, List[str]]:
 		
 		"""
 		create seequences across All tickers.
@@ -63,15 +63,10 @@ class SequenceGenerator:
 			#ensure all required features
 			missing = [col for col in self.feature_cols if col not in df.columns]
 			if missing:
-				print(f"   Warning: {ticker} missing features: {missing[:5]}...")
-				#Use available features for the ticker
-				available_features = [col for col in self.feature_cols if col in df.columns]
-				if not available_features:
-					continue
-				feature_data = df[available_features].values
-			else:
-				feature_data = df[self.feature_cols].values
-
+				# we skip to ensure every ticker has the same feature count for the model
+				print(f"   Skipping {ticker} (missing features: {missing}, total of {len(missing)})")
+				continue
+			feature_data = df[self.feature_cols].values
 			labels = df['label'].values
 
 			#Create rolling windows

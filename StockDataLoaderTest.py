@@ -7,8 +7,11 @@ from dotenv import load_dotenv
 load_dotenv()
 def main():
 	SDL = StockDataLoader(base_path="../OHLC 1 minute data/extracted_files")
+	# Updated for Jordan's computer file structure
+	# DATA_PATH = r"D:\OHLC 1992-2025-2 tar files"
+	# SDL = StockDataLoader(base_path=DATA_PATH)
 
-	aapl = SDL.load1min("aapl", "2002-01-01", "2025-12-31")
+	aapl = SDL.load1min("aapl", "2024-01-01", "2024-01-31")
 	print(aapl.head())
 	print(aapl.tail())
 	print(f"\nShape: {aapl.shape}")

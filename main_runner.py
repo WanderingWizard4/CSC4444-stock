@@ -62,18 +62,6 @@ def get_current_sequence(master_data: dict, timeline_idx: int, seq_gen: Sequence
 	batch_tensor = torch.FloatTensor(stacked).permute(1,0,2).reshape(1, window_size, -1)
 
 	return batch_tensor
-
-def align_all_dataframes(master_data: dict, timeline):
-	'''Make sure every ticker has the same index as the main timeline'''
-	aligned = {}
-	for ticker, df in master_data.items():
-		if df.empty:
-			aligned[ticker] = df
-			continue
-		df_aligned = df.reindex(timeline, method='ffill')
-		df_aligned = df_aligned.bfill()
-		aligned[ticker] = df_aligned
-	return aligned
 	
 # --- CONFIGURATION SWITCH ---
 # Set this to True to train the brain on 2024 data
@@ -88,7 +76,7 @@ def align_all_dataframes(master_data: dict, timeline):
 			aligned[ticker]=df
 			continue
 		df_aligned = df.reindex(timeline, method='ffill').bfill()
-		aligned[ticker] = df
+		aligned[ticker] = df_aligned
 	return aligned
     
 def main():
@@ -101,6 +89,7 @@ def main():
 		'VZ', 'AMGN', 'DIS', 'BA', 'CRM', 'HON', 'SHW', 'MMM', 'NKE', 'TRV', 'SPY'
 	]
 	DATA_PATH = "../OHLC 1 minute data/extracted_files"
+	# DATA_PATH = r"D:\OHLC 1992-2025-2 tar files"
 	
 	# --- DATE LOGIC BASED ON MODE ---
 	if TRAINING_MODE:
@@ -109,7 +98,7 @@ def main():
 		print(f"MODE: TRAINING (Studying {START_DATE} to {END_DATE})")
 	else:
 		START_DATE = "2025-01-01"
-		END_DATE = "2025-03-31"
+		END_DATE = "2025-12-31"
 		print(f"MODE: BACKTEST (Testing {START_DATE} to {END_DATE})")
 		
 	# 2. INITIALIZE ENGINE COMPONENTS
