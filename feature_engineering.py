@@ -20,8 +20,8 @@ class MultiTimeFrameFeatures:
 	def create_features(
 		self,
 		ticker: str, 
-		start: str = None, 
-		end: str = None, 
+		start: str | None = None, 
+		end: str | None = None, 
 		lookback_days: int = 60) -> dict:
 
 		'''Main method to load raw data and create multiple resampled time frames'''
