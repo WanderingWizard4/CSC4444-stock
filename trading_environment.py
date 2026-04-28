@@ -123,6 +123,8 @@ class Portfolio:
 				'trade_value': round(trade.quantity * trade.price, 2),
 			})
 		trades_df = pd.DataFrame(records)
+		column_order = ['datetime', 'ticker', 'action', 'quantity', 'price', 'trade_value']
+		trades_df = trades_df[column_order]
 		trades_df.to_csv(filepath, index=False)
 		print(f"Trade history saved: {os.path.basename(filepath)} ({len(trades_df)} trades)")
 
@@ -202,7 +204,7 @@ class Portfolio:
 		plt.annotate(f'Start: ${start_val:,.0f}',
 					 xy=(df['datetime'].iloc[-1], end_val),
 					 xytext=(10, -15), textcoords='offset points',
-					 arroowprops=dict(arrowstyle='->', color='red'))
+					 arrowprops=dict(arrowstyle='->', color='red'))
 		plt.tight_layout()
 		plot_path = filepath.replace('.csv', '.png')
 		plt.savefig(plot_path, dpi=200, bbox_inches='tight')
