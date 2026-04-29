@@ -20,7 +20,7 @@ from sequence_generator import SequenceGenerator
 
 
 #============ CONFIG==================
-TRAINING_MODE = False   #train on 2024 | False = backtest on 2025
+TRAINING_MODE = True   #True = train  | False = backtest
 REBALANCE_EVERY = 12   #12 *5min = hourly rebalancing
 WINDOW_SIZE = 60
 #======================================
@@ -175,7 +175,7 @@ def main():
 				print(f" skipped{ticker}")
 	print(f"\nSuccessfully processed {len(master_data)} / {len(TICKERS)} tickers")
 
-	# Simulation / Backetesting
+	# Simulator / Backtest
 	# Check if data actually loaded before continuing
 	if not master_data:
 		print("Error: No data loaded. womp womp...")
@@ -202,7 +202,7 @@ def main():
 	bridge = AgentBridge(tickers=TICKERS)
 	
     
-	# Initialize variables before the loop to fix VS Code "undefined" warnings
+	# Initialize variables
 	current_prices = {t: 0.0 for t in TICKERS}
 
 	if TRAINING_MODE:
@@ -244,9 +244,8 @@ def main():
 				#Control immediately invests cash in SPY
 				bridge.buy_spy_on_payday(control_portfolio, current_prices, dt)
 	
-			#CHALLENGER AGENT DECISION
+			#Challenger Agent Decision
 			if i% REBALANCE_EVERY == 0:
-				# features: Placeholder for the 60-min window sequence (Batch, Window, Features)
 				features = get_current_sequence(master_data, i, seq_gen, WINDOW_SIZE)
 				features = normalize_features(features)
 				with torch.no_grad():
@@ -262,7 +261,7 @@ def main():
 			challenger_portfolio.record_equity(dt, challenger_portfolio.get_current_value(current_prices))
 			control_portfolio.record_equity(dt, control_portfolio.get_current_value(current_prices))
 		
-		# 5. FINAL RESULTS (Only for Backtest)
+		# final results (Only for Backtest)
 		final_c = challenger_portfolio.get_current_value(current_prices)
 		final_s = control_portfolio.get_current_value(current_prices)
 		

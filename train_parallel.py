@@ -68,13 +68,13 @@ class TradingDataset(Dataset):
 def get_device():
     if torch.cuda.is_available():
         device = torch.device("cuda")
-        print(f"✅ Using CUDA: {torch.cuda.get_device_name(0)}")
+        print(f"Using CUDA: {torch.cuda.get_device_name(0)}")
     elif torch.backends.mps.is_available():
         device = torch.device("cpu")   # ← TEMPORARY: Force CPU for stability
-        print("⚠️  MPS causing NaNs → Falling back to CPU (more stable for LSTM)")
+        print("Warning: MPS causing NaNs → Falling back to CPU (more stable for LSTM)")
     else:
         device = torch.device("cpu")
-        print("⚠️ Using CPU")
+        print("Using CPU")
     return device
 
 
@@ -145,8 +145,7 @@ def train_agent(master_dfs, num_epochs=5, batch_size=32):
         print(f"Epoch {epoch+1} completed. Avg Loss: {avg_loss:.6f}\n")
 
     torch.save(model.state_dict(), "challenger_model.pth")
-    print("✅ Training finished! Model saved.")
-
+    print("Training finished! Model saved.")
 
 if __name__ == "__main__":
     print("Run via main_runner.py")

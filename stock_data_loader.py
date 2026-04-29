@@ -19,13 +19,10 @@ class StockDataLoader:
 
 		print(f"StockDataLoader initialized with base path: {self.base_path}")
 
-	# For regular file structure:
 	def _get_file_path(self, year: int, month: int, ticker: str) -> Path:
 		month_str = f"{month:02d}"
 		return self.base_path / str(year) / f"{year}-{month_str}" / f"{ticker.upper()}.csv"
 
-	
-	
 	def load1min(self, 
 				ticker: str, 
 				start: str | None = "1992-01-01", 
