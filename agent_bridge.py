@@ -2,7 +2,7 @@ import torch
 import datetime
 
 class AgentBridge:
-	def __init__(self, tickers, trade_penalty=0.001, confidence_threshold=0.15):
+	def __init__(self, tickers, trade_penalty=0.001, confidence_threshold=0.05):
 		self.tickers = tickers
 		self.trade_penalty = trade_penalty # 0.1% slippage/fee simulation
 		self.confidence_threshold = confidence_threshold
