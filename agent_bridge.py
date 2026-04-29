@@ -2,7 +2,7 @@ import torch
 import datetime
 
 class AgentBridge:
-	def __init__(self, tickers, trade_penalty=0.001, confidence_threshold=0.05):
+	def __init__(self, tickers, trade_penalty=0.001, confidence_threshold=0.1):
 		self.tickers = tickers
 		self.trade_penalty = trade_penalty # 0.1% slippage/fee simulation
 		self.confidence_threshold = confidence_threshold
@@ -19,10 +19,14 @@ class AgentBridge:
 			return
 			
 		# Confidence Check
+		temp = 0.1
 
 		if torch.is_tensor(weights):
-			max_val, _ = torch.max(weights.view(-1), dim=0)
+			logits = torch.log(weights + 1e-8)  # Avoid log(0)
+			sharper_weights = torch.softmax(logits / temp, dim=-1)
+			max_val, _ = torch.max(sharper_weights.view(-1), dim=0)
 			confidence = max_val.item()
+			weights = sharper_weights
 		else:
 			confidence = max(weights)
 
