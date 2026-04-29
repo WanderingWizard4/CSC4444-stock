@@ -23,14 +23,14 @@ class TripleBarrierLabeler:
 		"""Main labeling logic"""
 		print(f"Labeling {len(df)} rows...")
         
-		# 1. Get dynamic volatility (so barriers aren't static)
+		# Get dynamic volatility (so barriers aren't static)
 		vol = self.compute_volatility(df)
         
 		labels = []
 		prices = df['close'].values
 		vol_values = vol.reindex(df.index).bfill().values
         
-		# 2. Iterate and look ahead (the 'Barriers')
+		# Iterate and look ahead (the 'Barriers')
 		# Note: Vectorize for speed @ production, but this is clearer for testing
 		for i in range(len(prices) - self.window):
 			start_price = prices[i]

@@ -7,14 +7,14 @@ load_dotenv()
 
 class SentimentLoader:
 	def __init__(self):
-		# 1. Initialize the official Finnhub client
+		# Initialize the official Finnhub client
 		api_key = os.getenv('FINNHUB_API_KEY')
 		self.finnhub_client = finnhub.Client(api_key=api_key)
 
 	def fetch_sentiment(self, ticker: str):
 		"""Pulls pre-calculated news sentiment using official library"""
 		try:
-			# 2. Call the specific sentiment endpoint
+			# Call the specific sentiment endpoint
 			data = self.finnhub_client.news_sentiment(ticker.upper())
             
 			# Extract scores (bullishPercent is the 0-1 scale we want)

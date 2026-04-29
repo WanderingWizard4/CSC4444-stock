@@ -1,6 +1,3 @@
-#trading_environment.py
-#necessary components for the simulated trading environment
-
 from collections import defaultdict
 import datetime
 from dataclasses import dataclass

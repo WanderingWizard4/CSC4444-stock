@@ -25,7 +25,7 @@ class ChallengerAgent(nn.Module):
 			batch_first=True
 		)
         
-		# DECISION LAYER
+		# Decision Layer
 		# Maps GRU state for selected stocks to weights
 		self.fc = nn.Linear(64, num_stocks)
         
@@ -52,6 +52,6 @@ class ChallengerAgent(nn.Module):
 		# Softmax ensures our 30 weights add up to 1.0 (Total Portfolio)
 		return F.softmax(output, dim=1)
 
-# Example usage for your 30 stocks
+#example usage
 # 9 features: O, H, L, C, V, MACD, RSI, Sentiment, Buzz
 model = ChallengerAgent(input_dim=9, hidden_dim=128, num_stocks=30)

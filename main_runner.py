@@ -20,7 +20,7 @@ from sequence_generator import SequenceGenerator
 
 
 #============ CONFIG==================
-TRAINING_MODE = True   #train on 2024 | False = backtest on 2025
+TRAINING_MODE = True   #True = train  | False = backtest
 REBALANCE_EVERY = 12   #12 *5min = hourly rebalancing
 WINDOW_SIZE = 60
 #======================================
@@ -137,7 +137,7 @@ def align_all_dataframes(master_data: dict, timeline):
 def main():
 	load_dotenv()
 	
-	# 1. SETUP CONSTANTS tickers from DJIA + SPY
+	#  SETUP CONSTANTS tickers from DJIA + SPY
 	TICKERS = [
 		'NVDA', 'AAPL', 'MSFT', 'AMZN', 'WMT', 'JPM', 'V', 'JNJ', 'CAT', 'CVX', 
 		'CSCO', 'PG', 'HD', 'KO', 'UNH', 'MRK', 'GS', 'AXP', 'MCD', 'IBM', 
@@ -145,7 +145,7 @@ def main():
 	]
 	DATA_PATH = "../OHLC 1 minute data/extracted_files"
 	
-	# --- DATE LOGIC BASED ON MODE ---
+	# --- Date Logic Based on Mode ---
 	if TRAINING_MODE:
 		START_DATE = "2018-01-01"
 		END_DATE = "2023-12-31"
@@ -154,13 +154,8 @@ def main():
 		START_DATE = "2024-01-01"
 		END_DATE = "2026-03-31"
 		print(f"MODE: BACKTEST (Testing {START_DATE} to {END_DATE})")
-		
-	'''# 2. INITIALIZE ENGINE COMPONENTS
-	sdl = StockDataLoader(base_path=DATA_PATH)
-	sl = SentimentLoader()
-	rf = RollingFeatures()
-	'''
-	# 3. DATA PREP LOOP (The Pipeline)
+
+	# Data Prep Loop (The Pipeline)
 	master_data = {}
 	num_workers = min(12, mp.cpu_count())
 	
@@ -179,30 +174,8 @@ def main():
 			else:
 				print(f" skipped{ticker}")
 	print(f"\nSuccessfully processed {len(master_data)} / {len(TICKERS)} tickers")
-	'''	
-		for ticker in TICKERS:
-	try:
-		mfe = MultiTimeFrameFeatures(sdl)
-		# We use 5min as our standard trading interval
-		multi_tf = mfe.create_features(ticker, start=START_DATE, end=END_DATE)
-		df_5m = sl.add_sentiment_to_df(multi_tf['5min'], ticker)
-		processed_df = rf.process({'5min': df_5m})['5min']
-		
-		master_data[ticker] = processed_df
-		print(f"Loaded {ticker}")
-	except Exception as e:
-		print(f"Skipping {ticker} due to error: {e}")
 
-tbl = TripleBarrierLabeler(pt_multiplier=1.5, sl_multiplier=1.0, vertical_barrier_mins=60)
-
-for ticker in list(master_data.keys()):
-	try:
-		master_data[ticker] = tbl.label_data(master_data[ticker])
-		print(f"Labels added for {ticker} | Unique labels: {master_data[ticker]['label'].value_counts().to_dict()}")
-	except Exception as e:
-		print(f"Failed to label {ticker}: {e}")
-	'''
-	# 4. THE SIMULATION / BACKTEST
+	# Simulator / Backtest
 	# Check if data actually loaded before continuing
 	if not master_data:
 		print("Error: No data loaded. womp womp...")
@@ -229,7 +202,7 @@ for ticker in list(master_data.keys()):
 	bridge = AgentBridge(tickers=TICKERS)
 	
     
-	# INITIALIZE variables before the loop to fix VS Code "undefined" warnings
+	# Initialize variables
 	current_prices = {t: 0.0 for t in TICKERS}
 
 	if TRAINING_MODE:
@@ -269,9 +242,8 @@ for ticker in list(master_data.keys()):
 				challenger_portfolio.payday(1000)
 				control_portfolio.payday(1000)
 	
-			#CHALLENGER AGENT DECISION
+			#Challenger Agent Decision
 			if i% REBALANCE_EVERY == 0:
-				# features: Placeholder for the 60-min window sequence (Batch, Window, Features)
 				features = get_current_sequence(master_data, i, seq_gen, WINDOW_SIZE)
 				features = normalize_features(features)
 				with torch.no_grad():
@@ -287,7 +259,7 @@ for ticker in list(master_data.keys()):
 			challenger_portfolio.record_equity(dt, challenger_portfolio.get_current_value(current_prices))
 			control_portfolio.record_equity(dt, control_portfolio.get_current_value(current_prices))
 		
-		# 5. FINAL RESULTS (Only for Backtest)
+		# final results (Only for Backtest)
 		final_c = challenger_portfolio.get_current_value(current_prices)
 		final_s = control_portfolio.get_current_value(current_prices)
 		
