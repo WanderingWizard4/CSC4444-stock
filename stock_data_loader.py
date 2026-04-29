@@ -20,17 +20,10 @@ class StockDataLoader:
 
 		print(f"StockDataLoader initialized with base path: {self.base_path}")
 
-	# For regular file structure:
 	def _get_file_path(self, year: int, month: int, ticker: str) -> Path:
 		month_str = f"{month:02d}"
 		return self.base_path / str(year) / f"{year}-{month_str}" / f"{ticker.upper()}.csv"
 
-	# For Jordan's path structure:
-	# def _get_file_path(self, year: int, month: int, ticker: str) -> Path:
-	#	month_str = f"{month:02d}"
-	#	folder_name = f"us_ohlc1m_{year}-{month_str}"
-	#	return self.base_path / folder_name / f"{year}-{month_str}" / f"{ticker.upper()}.csv"
-	
 	def load1min(self, 
 				ticker: str, 
 				start: str | None = "1992-01-01", 
