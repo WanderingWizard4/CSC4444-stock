@@ -1,6 +1,3 @@
-#trading_environment.py
-#necessary components for the simulated trading environment
-
 from collections import defaultdict
 import datetime
 from dataclasses import dataclass
@@ -123,6 +120,8 @@ class Portfolio:
 				'trade_value': round(trade.quantity * trade.price, 2),
 			})
 		trades_df = pd.DataFrame(records)
+		column_order = ['datetime', 'ticker', 'action', 'quantity', 'price', 'trade_value']
+		trades_df = trades_df[column_order]
 		trades_df.to_csv(filepath, index=False)
 		print(f"Trade history saved: {os.path.basename(filepath)} ({len(trades_df)} trades)")
 
