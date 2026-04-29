@@ -17,10 +17,10 @@ class AgentBridge:
 		if weights is None:
 			return
 			
-		# 1. Calculate Total Net Worth (Cash + Market Value of all stocks)
+		# Calculate Total Net Worth (Cash + Market Value of all stocks)
 		total_value = portfolio.get_current_value(current_prices)
         
-		# 2. Determine Target Dollars for each stock
+		# Determine Target Dollars for each stock
 		# We assume weights[i] is the % of total_value we want in ticker[i]
 		allocations = {}
 		w = 0.0
@@ -31,7 +31,7 @@ class AgentBridge:
 				
 			allocations[ticker] = total_value * w
 			
-		# 3. SELL FIRST (To free up cash)
+		# Sell First (To free up cash)
 		# It is standard practice to sell before buying so the 'buy' checks don't fail for lack of cash
 		for ticker in self.tickers:
 			target_dollars = allocations[ticker]
@@ -43,7 +43,7 @@ class AgentBridge:
 				shares_to_sell = diff_dollars / current_prices[ticker]
 				portfolio.sell(dt, ticker, shares_to_sell, current_prices[ticker])
 				
-		# 4. BUY SECOND (Using the freed-up cash)
+		# Buy Second (Using the freed-up cash)
 		for ticker in self.tickers:
 			target_dollars = allocations[ticker]
 			current_shares = portfolio.get_total_shares(ticker)
@@ -58,3 +58,20 @@ class AgentBridge:
 		"""Returns equal weights (1/30) for the Secondary Control Agent"""
 		val = 1.0 / len(self.tickers)
 		return [val] * len(self.tickers)
+
+	def buy_spy_on_payday(self, portfolio, current_prices, dt):
+		'''Pure SPY buy-and-hold for Control Agent'''
+		if 'SPY' not in current_prices or current_prices['SPY'] <= 0:
+			print("   Warning: No SPY price available")
+			return False
+	
+		spy_price = current_prices['SPY']
+		cash_available = portfolio.cash
+	
+		if cash_available > 50:   # small threshold to avoid tiny buys
+			shares = cash_available / spy_price
+			success = portfolio.buy(dt, 'SPY', shares, spy_price)
+			if success:
+				print(f"Control Bought {shares:.2f} SPY @ ${spy_price:.2f} | Cash left: ${portfolio.cash:.2f}")
+				return True
+		return False
