@@ -137,7 +137,7 @@ def align_all_dataframes(master_data: dict, timeline):
 def main():
 	load_dotenv()
 	
-	# 1. SETUP CONSTANTS tickers from DJIA + SPY
+	# Setup Constants tickers from DJIA + SPY
 	TICKERS = [
 		'NVDA', 'AAPL', 'MSFT', 'AMZN', 'WMT', 'JPM', 'V', 'JNJ', 'CAT', 'CVX', 
 		'CSCO', 'PG', 'HD', 'KO', 'UNH', 'MRK', 'GS', 'AXP', 'MCD', 'IBM', 
@@ -145,7 +145,7 @@ def main():
 	]
 	DATA_PATH = "../OHLC 1 minute data/extracted_files"
 	
-	# --- DATE LOGIC BASED ON MODE ---
+	# --- Date Logic Based on Mode ---
 	if TRAINING_MODE:
 		START_DATE = "2018-01-01"
 		END_DATE = "2023-12-31"
@@ -154,13 +154,8 @@ def main():
 		START_DATE = "2024-01-01"
 		END_DATE = "2026-03-31"
 		print(f"MODE: BACKTEST (Testing {START_DATE} to {END_DATE})")
-		
-	'''# 2. INITIALIZE ENGINE COMPONENTS
-	sdl = StockDataLoader(base_path=DATA_PATH)
-	sl = SentimentLoader()
-	rf = RollingFeatures()
-	'''
-	# 3. DATA PREP LOOP (The Pipeline)
+
+	# Data Prep Loop (The Pipeline)
 	master_data = {}
 	num_workers = min(12, mp.cpu_count())
 	
@@ -179,30 +174,8 @@ def main():
 			else:
 				print(f" skipped{ticker}")
 	print(f"\nSuccessfully processed {len(master_data)} / {len(TICKERS)} tickers")
-	'''	
-		for ticker in TICKERS:
-	try:
-		mfe = MultiTimeFrameFeatures(sdl)
-		# We use 5min as our standard trading interval
-		multi_tf = mfe.create_features(ticker, start=START_DATE, end=END_DATE)
-		df_5m = sl.add_sentiment_to_df(multi_tf['5min'], ticker)
-		processed_df = rf.process({'5min': df_5m})['5min']
-		
-		master_data[ticker] = processed_df
-		print(f"Loaded {ticker}")
-	except Exception as e:
-		print(f"Skipping {ticker} due to error: {e}")
 
-tbl = TripleBarrierLabeler(pt_multiplier=1.5, sl_multiplier=1.0, vertical_barrier_mins=60)
-
-for ticker in list(master_data.keys()):
-	try:
-		master_data[ticker] = tbl.label_data(master_data[ticker])
-		print(f"Labels added for {ticker} | Unique labels: {master_data[ticker]['label'].value_counts().to_dict()}")
-	except Exception as e:
-		print(f"Failed to label {ticker}: {e}")
-	'''
-	# 4. THE SIMULATION / BACKTEST
+	# Simulation / Backetesting
 	# Check if data actually loaded before continuing
 	if not master_data:
 		print("Error: No data loaded. womp womp...")
@@ -229,7 +202,7 @@ for ticker in list(master_data.keys()):
 	bridge = AgentBridge(tickers=TICKERS)
 	
     
-	# INITIALIZE variables before the loop to fix VS Code "undefined" warnings
+	# Initialize variables before the loop to fix VS Code "undefined" warnings
 	current_prices = {t: 0.0 for t in TICKERS}
 
 	if TRAINING_MODE:
@@ -268,6 +241,8 @@ for ticker in list(master_data.keys()):
 				print(f"Payday! Adding $1000 to both agents at {dt}")
 				challenger_portfolio.payday(1000)
 				control_portfolio.payday(1000)
+				#Control immediately invests cash in SPY
+				bridge.buy_spy_on_payday(control_portfolio, current_prices, dt)
 	
 			#CHALLENGER AGENT DECISION
 			if i% REBALANCE_EVERY == 0:
