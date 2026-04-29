@@ -140,7 +140,7 @@ def align_all_dataframes(master_data: dict, timeline):
 def main():
 	load_dotenv()
 	
-	#  SETUP CONSTANTS tickers from DJIA + SPY
+	# Setup Constants tickers from DJIA + SPY
 	TICKERS = [
 		'NVDA', 'AAPL', 'MSFT', 'AMZN', 'WMT', 'JPM', 'V', 'JNJ', 'CAT', 'CVX', 
 		'CSCO', 'PG', 'HD', 'KO', 'UNH', 'MRK', 'GS', 'AXP', 'MCD', 'IBM', 
@@ -250,6 +250,8 @@ def main():
 				print(f"Payday! Adding $1000 to both agents at {dt}")
 				challenger_portfolio.payday(1000)
 				control_portfolio.payday(1000)
+				#Control immediately invests cash in SPY
+				bridge.buy_spy_on_payday(control_portfolio, current_prices, dt)
 	
 			#Challenger Agent Decision
 			if i% REBALANCE_EVERY == 0:

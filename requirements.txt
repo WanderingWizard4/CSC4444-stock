@@ -1,0 +1,22 @@
+# Core Deep Learning
+torch
+torchvision
+torchaudio
+
+# Data Manipulation & Analysis
+pandas
+numpy
+scipy
+scikit-learn
+
+# Technical Indicators & Math
+pandas-ta
+ta
+
+# Environment & System
+python-dotenv
+requests
+
+# Visualization (for your report graphs)
+matplotlib
+seaborn
