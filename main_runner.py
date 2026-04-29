@@ -120,19 +120,6 @@ def align_all_dataframes(master_data: dict, timeline):
 		df_aligned = df.reindex(timeline, method='ffill').bfill()
 		aligned[ticker] = df_aligned
 	return aligned
-	
-
-
-def align_all_dataframes(master_data: dict, timeline):
-	'''Make sure every ticker has the same index as the main timeline'''
-	aligned = {}
-	for ticker, df in master_data.items():
-		if df.empty:
-			aligned[ticker]=df
-			continue
-		df_aligned = df.reindex(timeline, method='ffill').bfill()
-		aligned[ticker] = df
-	return aligned
     
 def main():
 	load_dotenv()

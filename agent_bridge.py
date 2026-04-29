@@ -2,9 +2,10 @@ import torch
 import datetime
 
 class AgentBridge:
-	def __init__(self, tickers, trade_penalty=0.001):
+	def __init__(self, tickers, trade_penalty=0.001, confidence_threshold=0.6):
 		self.tickers = tickers
 		self.trade_penalty = trade_penalty # 0.1% slippage/fee simulation
+		self.confidence_threshold = confidence_threshold
 
 	def execute_allocation(self, portfolio, weights, current_prices, dt):
 		"""
@@ -17,6 +18,19 @@ class AgentBridge:
 		if weights is None:
 			return
 			
+		# Confidence Check
+
+		if torch.is_tensor(weights):
+			max_val, _ = torch.max(weights.view(-1), dim=0)
+			confidence = max_val.item()
+		else:
+			confidence = max(weights)
+
+		# If confidence is very low, skip trading to avoid noise
+		if confidence < self.confidence_threshold:
+			return
+		
+
 		# Calculate Total Net Worth (Cash + Market Value of all stocks)
 		total_value = portfolio.get_current_value(current_prices)
 		
