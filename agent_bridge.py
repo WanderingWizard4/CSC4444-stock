@@ -58,3 +58,20 @@ class AgentBridge:
 		"""Returns equal weights (1/30) for the Secondary Control Agent"""
 		val = 1.0 / len(self.tickers)
 		return [val] * len(self.tickers)
+
+	def buy_spy_on_payday(self, portfolio, current_prices, dt):
+		'''Pure SPY buy-and-hold for Control Agent'''
+		if 'SPY' not in current_prices or current_prices['SPY'] <= 0:
+			print("   Warning: No SPY price available")
+			return False
+	
+		spy_price = current_prices['SPY']
+		cash_available = portfolio.cash
+	
+		if cash_available > 50:   # small threshold to avoid tiny buys
+			shares = cash_available / spy_price
+			success = portfolio.buy(dt, 'SPY', shares, spy_price)
+			if success:
+				print(f"Control Bought {shares:.2f} SPY @ ${spy_price:.2f} | Cash left: ${portfolio.cash:.2f}")
+				return True
+		return False
