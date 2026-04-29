@@ -19,7 +19,12 @@ class AgentBridge:
 			
 		# Calculate Total Net Worth (Cash + Market Value of all stocks)
 		total_value = portfolio.get_current_value(current_prices)
-        
+		
+		# Get the value of SPY holdings to exclude from rebalancing
+		spy_shares = portfolio.get_total_shares('SPY')
+		spy_value = spy_shares * current_prices.get('SPY', 0.0)
+		rebalance_value = total_value - spy_value  # Only rebalance the non-SPY portion
+
 		# Determine Target Dollars for each stock
 		# We assume weights[i] is the % of total_value we want in ticker[i]
 		allocations = {}
@@ -29,11 +34,13 @@ class AgentBridge:
 				# weights[0][i] if it's a batch tensor, otherwise weights[i]
 				w = weights[0][i].item() if torch.is_tensor(weights) else weights[i]
 				
-			allocations[ticker] = total_value * w
+			allocations[ticker] = rebalance_value * w
 			
 		# Sell First (To free up cash)
 		# It is standard practice to sell before buying so the 'buy' checks don't fail for lack of cash
 		for ticker in self.tickers:
+			if ticker == 'SPY':
+				continue  # Skip SPY for rebalancing
 			target_dollars = allocations[ticker]
 			current_shares = portfolio.get_total_shares(ticker)
 			current_dollars = current_shares * current_prices.get(ticker, 0.0)
@@ -45,6 +52,8 @@ class AgentBridge:
 				
 		# Buy Second (Using the freed-up cash)
 		for ticker in self.tickers:
+			if ticker == 'SPY':
+				continue  # Skip SPY for rebalancing
 			target_dollars = allocations[ticker]
 			current_shares = portfolio.get_total_shares(ticker)
 			current_dollars = current_shares * current_prices.get(ticker, 0.0)
