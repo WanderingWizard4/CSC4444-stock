@@ -19,14 +19,14 @@ class AgentBridge:
 			return
 			
 		# Confidence Check
-		temp = 0.1
+		temp = 0.05
 
 		if torch.is_tensor(weights):
 			logits = torch.log(weights + 1e-8)  # Avoid log(0)
 			sharper_weights = torch.softmax(logits / temp, dim=-1)
+			weights = sharper_weights
 			max_val, _ = torch.max(sharper_weights.view(-1), dim=0)
 			confidence = max_val.item()
-			weights = sharper_weights
 		else:
 			confidence = max(weights)
 
