@@ -20,7 +20,7 @@ from sequence_generator import SequenceGenerator
 
 
 #============ CONFIG==================
-TRAINING_MODE = True   #True = train  | False = backtest
+TRAINING_MODE = False   #True = train  | False = backtest
 REBALANCE_EVERY = 12   # 12 *5min = 1 hour rebalancing
 WINDOW_SIZE = 60
 #======================================
