@@ -27,6 +27,7 @@ class AgentBridge:
 			confidence = max(weights)
 
 		# If confidence is very low, skip trading to avoid noise
+		print(f"DEBUG: Confidence is {confidence:.4f} | Threshold is {self.confidence_threshold}")
 		if confidence < self.confidence_threshold:
 			return
 		
